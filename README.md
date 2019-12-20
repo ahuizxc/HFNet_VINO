@@ -34,3 +34,4 @@ after done all steps before, you can run ```python3 tf_camera_demo.py``` for usi
 
 Feel free to open any issue if you need to help:)
 
+![Image text](https://raw.githubusercontent.com/ahuizxc/HFNet_VINO/master/demo_vino.gif)
