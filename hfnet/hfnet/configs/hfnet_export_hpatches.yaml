@@ -1,0 +1,8 @@
+data:
+    name: 'hpatches'
+    alteration: 'all'
+model:
+    name: 'hf_net'
+    image_channels: 1
+    local:
+        detector_threshold: 0.005

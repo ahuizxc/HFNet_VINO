@@ -1,0 +1,14 @@
+data:
+    name: 'distillation'
+    image_dirs: ['google_landmarks/images',
+                 'bdd/dawn_images_vga', 'bdd/night_images_vga']
+    shuffle: false
+    preprocessing:
+        resize: [480, 640]
+        grayscale: true
+model:
+    name: 'super_point_pytorch'
+    nms_radius: 0
+    detector_threshold: 0.005
+    image_channels: 1
+weights: 'superpoint_v1.pth'

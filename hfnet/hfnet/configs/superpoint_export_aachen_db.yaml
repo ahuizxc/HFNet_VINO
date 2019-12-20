@@ -1,0 +1,11 @@
+data:
+    name: 'aachen'
+    load_db: true
+    load_queries: false
+    resize_max: 960
+model:
+    name: 'super_point_pytorch'
+    nms_radius: 0
+    detector_threshold: 0.005
+    image_channels: 1
+weights: 'superpoint_v1.pth'

@@ -1,0 +1,10 @@
+data:
+    name: 'aachen'
+    load_db: true
+    load_queries: true
+    resize_max: 960
+    grayscale: true
+model:
+    name: 'mobilenetvlad'
+    local_descriptor_layer: 'layer_7'
+    image_channels: 1
