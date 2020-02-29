@@ -24,6 +24,8 @@ if __name__ == '__main__':
     exper_name = args.exper_name
 
     with open(args.config, 'r') as f:
+        config = yaml.load(f)
+
     export_dir = Path(EXPER_PATH, 'saved_models', export_name)
 
     if exper_name:
