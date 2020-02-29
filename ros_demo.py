@@ -1,13 +1,10 @@
 import tensorflow as tf
-import sys
 import os
 import cv2
 import numpy as np
 from openvino.inference_engine import IENetwork
 from openvino.inference_engine import IEPlugin,IECore
-import PIL
 import time
-import pdb
 import rospy
 from sensor_msgs.msg import Image
 from cv_bridge import CvBridge

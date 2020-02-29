@@ -34,4 +34,39 @@ after done all steps before, you can run ```python3 tf_camera_demo.py``` for usi
 
 Feel free to open any issue if you need to help:)
 
+# ROS Usage
+
+The major problem with ROS is that ROS does not support Python3 officially. Though it is possible to import rospy in Python3, cv_bridge must be recompiled locally.
+
+```
+# install some tools for building
+sudo apt-get install python-catkin-tools python3-dev python3-numpy
+
+# make a new catkin workspace
+mkdir ~/cv_bridge_ws && cd ~/cv_bridge_ws
+
+# config and build -- check the following path and revise them if needed (e.g. if you use Python 3.6 or higher)
+catkin config -DPYTHON_EXECUTABLE=/usr/bin/python3 -DPYTHON_INCLUDE_DIR=/usr/include/python3.5m -DPYTHON_LIBRARY=/usr/lib/x86_64-linux-gnu/libpython3.5m.so
+catkin config --install
+mkdir src; cd src
+git clone -b melodic https://github.com/ros-perception/vision_opencv.git
+cd ..
+catkin build cv_bridge
+```
+
+If having the error of `Could NOT find Boost (missing: python3)`, edit src/vision_opencv/cv_bridge/CMakeLists.txt and change `Boost REQUIRED python3` to `Boost REQUIRED python3.5` (or any other minor versions).
+
+Before running the script, set up PYTHONPATH properly by
+```
+. /opt/ros/kinetic/setup.bash
+. ~/cv_bridge_ws/install/setup.bash --extend
+. /opt/intel/openvino/setupvars.sh
+```
+
+And run the demo:
+```
+python3 ros_demo.py
+```
+
+
 ![DEMO](https://raw.githubusercontent.com/ahuizxc/HFNet_VINO/master/demo_vino.gif)
