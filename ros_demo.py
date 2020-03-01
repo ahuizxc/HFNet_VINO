@@ -8,11 +8,14 @@ import time
 import rospy
 from sensor_msgs.msg import Image
 from cv_bridge import CvBridge
-
+from hfnet_msgs.msg import Hfnet
+from geometry_msgs.msg import Point
+import pdb
+from std_msgs.msg import Float32MultiArray, Float32
 tf.enable_eager_execution()
 frame_data = None
 
-cpu_extension = "/home/slam/project/dldt/inference-engine/bin/intel64/Release/lib/libcpu_extension.so"
+cpu_extension = "/opt/intel/openvino/inference_engine/lib/intel64/libcpu_extension_sse4.so"
 model_file = "saved_model.xml"
 weights_file = "saved_model.bin"
 
@@ -39,22 +42,44 @@ class VinoNetwork:
         self.res = self.exec_net.infer(inputs={self.input_blob: np.expand_dims(image, axis=0)})
         self.result = list(self.res.values())
     def get_keypoints(self):
-        scores = self.result[2]
+        scores = self.res['pred/local_head/detector/Squeeze']
         self.keypoints = tf.where(tf.greater_equal(scores[0], 0.015))
     def draw_keypoints(self):
         self.keypoints = np.array([[int(i[0]*self.scale[1]),int(i[1]*self.scale[0])] for i in self.keypoints.numpy()[..., ::-1]])
-        #[cv2.circle(self.image_raw, (int(i[0]),int(i[1])), int(1), (255, 0, 0), 2) for i in self.keypoints]
+        [cv2.circle(self.image_raw, (int(i[0]),int(i[1])), int(1), (255, 0, 0), 2) for i in self.keypoints]
     def get_local_desc(self):
-        print('--------')
-        print(self.result[1])
-        print('--------')
-        self.local_descriptors = np.transpose(self.result[1],(0,2,3,1))
+        self.local_descriptors = np.transpose(self.res['pred/local_head/descriptor/Conv_1/BiasAdd/Normalize'],(0,2,3,1))
         self.local_descriptors = \
                     tf.nn.l2_normalize(
                         tf.contrib.resampler.resampler(
                             self.local_descriptors, 
                             tf.to_float(self.scaling_desc)[::-1]*tf.to_float(self.keypoints[None])), -1).numpy()[:50]
+    def get_global_desc(self):
+        self.global_descriptors = self.res['pred/global_head/dimensionality_reduction/BiasAdd/Normalize']
 
+    def to_ros_msg(self, header):
+        msg = Hfnet()
+        msg.header = header
+        points = []
+        local_desc = []
+
+        kp_list = self.keypoints.tolist()
+        desc_list = self.local_descriptors[0].tolist()
+        for i,kp in enumerate(kp_list):
+            p = Point()
+            desc = Float32MultiArray()
+            desc.data = desc_list[i]
+            p.x = kp[0]
+            p.y = kp[1]
+            local_desc.append(desc)
+            points.append(p)
+        global_desc = Float32MultiArray()
+        global_desc.data = self.global_descriptors[0].tolist()
+        # pdb.set_trace()
+        msg.global_desc = global_desc
+        msg.local_desc = local_desc
+        msg.local_points = points
+        return msg
 
 def main():
     vino_net = VinoNetwork(cpu_extension)
@@ -69,11 +94,11 @@ class Node():
     def __init__(self, net):
         self.net = net
         rospy.init_node('hfnet')
-        input_topic = rospy.get_param('input_topic', '/camera/color/image_raw')
+        input_topic = rospy.get_param('input_topic', '/usb_cam/image_raw')
         output_topic = rospy.get_param('output_topic', '/features')
         self.subscriber = rospy.Subscriber(input_topic, Image, self.callback)
         self.cv_bridge = CvBridge()
-
+        self.publisher = rospy.Publisher(output_topic, Hfnet)
     def callback(self, msg):
         start_time = time.time()
         frame = self.cv_bridge.imgmsg_to_cv2(msg, "bgr8")
@@ -81,7 +106,10 @@ class Node():
         self.net.get_keypoints()
         self.net.get_local_desc()
         self.net.draw_keypoints()
+        self.net.get_global_desc()
         end_time = time.time()
+        feature_msg = self.net.to_ros_msg(msg.header)
+        self.publisher.publish(feature_msg)
         # TODO publish
         #self.net.local_descriptors
         #self.net.keypoints

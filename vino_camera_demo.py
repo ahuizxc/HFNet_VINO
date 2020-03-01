@@ -8,7 +8,10 @@ from openvino.inference_engine import IEPlugin,IECore
 import PIL
 import time
 import pdb
-
+from hfnet_msgs.msg import Hfnet
+from std_msgs.msg import Header
+from geometry_msgs.msg import Point
+from std_msgs.msg import Float32MultiArray
 tf.enable_eager_execution()
 frame_data = None
 
@@ -35,23 +38,46 @@ class VinoNetwork:
         self.res = self.exec_net.infer(inputs={self.input_blob: np.expand_dims(image, axis=0)})
         self.result = list(self.res.values())
     def get_keypoints(self):
-        scores = self.result[2]
+        scores = self.res['pred/local_head/detector/Squeeze']
         self.keypoints = tf.where(tf.greater_equal(scores[0], 0.015))
     def draw_keypoints(self):
         self.keypoints = np.array([[int(i[0]*self.scale[1]),int(i[1]*self.scale[0])] for i in self.keypoints.numpy()[..., ::-1]])
         [cv2.circle(self.image_raw, (int(i[0]),int(i[1])), int(1), (255, 0, 0), 2) for i in self.keypoints]
     def get_local_desc(self):
-        self.local_descriptors = np.transpose(self.result[1],(0,2,3,1))
+        self.local_descriptors = np.transpose(self.res['pred/local_head/descriptor/Conv_1/BiasAdd/Normalize'],(0,2,3,1))
         self.local_descriptors = \
                     tf.nn.l2_normalize(
                         tf.contrib.resampler.resampler(
                             self.local_descriptors, 
                             tf.to_float(self.scaling_desc)[::-1]*tf.to_float(self.keypoints[None])), -1).numpy()[:50]
+    def get_global_desc(self):
+        self.global_descriptors = self.res['pred/global_head/dimensionality_reduction/BiasAdd/Normalize']
 
+    def to_ros_msg(self, header):
+        msg = Hfnet()
+        msg.header = header
+        points = []
+        local_desc = []
 
+        kp_list = self.keypoints.tolist()
+        desc_list = self.local_descriptors[0].tolist()
+        for i,kp in enumerate(kp_list):
+            p = Point()
+            desc = Float32MultiArray()
+            desc.data = desc_list[i]
+            p.x = kp[0]
+            p.y = kp[1]
+            local_desc.append(desc)
+            points.append(p)
+        global_desc = Float32MultiArray()
+        global_desc.data = self.global_descriptors[0].tolist()
+        msg.local_desc = local_desc
+        msg.global_desc = global_desc
+        msg.local_points = points
+        return msg
 
 if __name__ == "__main__":
-    cpu_extension = "/home/hui/intel64/Release/lib/libcpu_extension.so"
+    cpu_extension = "/opt/intel/openvino/inference_engine/lib/intel64/libcpu_extension_avx2.so"
     model_file = "./saved_model.xml"
     weights_file = "saved_model.bin"
     vino_net = VinoNetwork(cpu_extension)
@@ -60,7 +86,8 @@ if __name__ == "__main__":
     vino_net.build_exec_net()
     capture = cv2.VideoCapture(0)
 
-
+    # for i in range(90):
+    #     _, frame = capture.read()      
     plot_matcher = True
     image_old = None
     keypoints_old = None
@@ -75,10 +102,12 @@ if __name__ == "__main__":
         vino_net.get_keypoints()
         vino_net.get_local_desc()
         vino_net.draw_keypoints()
+        vino_net.get_global_desc()
+        msg = vino_net.to_ros_msg(Header())
         # end_time = time.time()
         if frame_count>0:
             try:
-            # pdb.set_trace()
+                # pdb.set_trace()
                 matches = bf.match(vino_net.local_descriptors[0], keypoints_desc_old[0])
                 # pdb.set_trace()
                 kp1 = cv2.KeyPoint_convert(vino_net.keypoints[:,None,:])
@@ -100,6 +129,7 @@ if __name__ == "__main__":
         keypoints_old = vino_net.keypoints
         key = cv2.waitKey(50)
         if key  == ord('q'):  
+            # pdb.set_trace()
             break
 
         if frame_count>0:
