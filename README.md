@@ -24,7 +24,7 @@ python3 opt/intel/openvino/deployment_tools/model_optimizer/mo.py --saved_model_
 
 and then you will get the `saved_model.bin` and `saved_model.xml`.
 
-if you are using OpenVINO 2019R3, you may failed to convert the model, here is the [solution](https://github.com/opencv/dldt/issues/344).
+if you are using OpenVINO 2019R3, you may failed to convert the model, here is the [solution](https://github.com/openvinotoolkit/openvino/issues/335).
 
 **here is my converted model [xml](https://drive.google.com/file/d/1dVTk8AURVvH8fBsMkziSNYqIcUIWvcV_/view?usp=sharing), [bin](https://drive.google.com/file/d/1DPp4j4p3ytxZGZGtTMQUE1AF-ZbLL4q_/view?usp=sharing)**
 
