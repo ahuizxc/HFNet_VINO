@@ -1,4 +1,4 @@
-torch==2.7.1
+torch==2.13.0
 numpy
 scipy
 opencv-python
